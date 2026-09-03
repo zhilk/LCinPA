@@ -57,6 +57,7 @@ function results = lcm_infer(X, opts)
         xt = X(t, :);             % [1 x D]: US, CS1, CS2
 
         % --- Temporal decay of cause counts (Heesink et al., 2024) ---
+        % ^ i can't find that reference
         if opts.lambda > 0
             Nk = exp(-opts.lambda) * Nk;
         end

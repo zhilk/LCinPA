@@ -14,7 +14,7 @@ projRoot = fileparts(fileparts(mfilename('fullpath')));
 addpath(fullfile(projRoot, 'Scripts'));
 
 % Load behavioral data
-dataDir = fullfile(projRoot, 'SubjectData');
+dataDir = fullfile(projRoot,'LCinPA', 'SubjectData');
 
 csvFiles = {
     fullfile(dataDir, 'LCPA_STUDY1_behavioral.csv')

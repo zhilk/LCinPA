@@ -45,7 +45,7 @@ function results = fit_rw(T)
     % Refine with fmincon
     obj = @(p) -rescaled_LL(rw_forward(CS, US, p), CR);
     opts_opt = optimoptions('fmincon','Display','off');
-    etaOpt = fmincon(obj, bestEta, [],[],[],[], 0.001, 1, [], opts_opt);
+    etaOpt = fmincon(obj, bestEta, [],[],[],[], 0.001, 1, [], opts_opt); %fminbnd might work here, as it is only one variable
 
     V  = rw_forward(CS, US, etaOpt);
     [LL, b0, b1, sigma] = rescaled_LL(V, CR);
@@ -88,6 +88,6 @@ function [LL, b0, b1, sigma] = rescaled_LL(V, CR)
     b1 = b(2);
     pred  = X * b;
     resid = CR(:) - pred;
-    sigma = sqrt(mean(resid.^2));         % ML estimate of sigma
+    sigma = sqrt(mean(resid.^2));         % ML estimate of sigma; assumes homoskedasticity
     LL    = -0.5 * n * log(2*pi) - n*log(sigma) - 0.5*sum((resid/sigma).^2);
 end
