@@ -17,7 +17,6 @@ function allStudyResults = run_models(behavioralData, studyLabels)
 %    allStudyResults – 3x1 cell array of per-study result structs
 
 nStudies = numel(behavioralData);
-behavioralData = addConditioningMeans(behavioralData); % add mean from conditioning phase to initiate weights later
 allStudyResults = cell(nStudies, 1);
 
 for s = 1:nStudies
