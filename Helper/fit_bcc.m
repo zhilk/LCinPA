@@ -1,10 +1,16 @@
 function results = fit_bcc(T)
-%FIT_BCC  Fit Bayesian Cue Combination model to one participant's data.
+
+%  Fit Bayesian Cue Combination model to one participant's data.
 %
 %  The BCC model (Büchel et al., 2014) computes perceived pain as a
-%  precision-weighted combination of a learned prior (via delta-rule) and
-%  the bottom-up sensory signal:
-%     CR = kappa * mu_prior + (1 - kappa) * s
+%  precision-weighted combination of a  prior and the bottom-up sensory signal:
+%
+%      CR = kappa * V(t) + (1 - kappa) * s(t)
+% 
+%  in which the expectation V(t) is the cue vector CS with the learned
+%  weights from the conditioning phase: 
+%       
+%      V(t) = CS(t) * w_fixed 
 %
 %  INPUT:
 %    T – table for one subject, sorted by TrialGlobal, with columns:
@@ -12,83 +18,92 @@ function results = fit_bcc(T)
 %
 %  OUTPUT:
 %    results – struct with fields:
-%      .eta, .kappa  – best-fit parameters
+%      .kappa  – best-fit parameters
 %      .V            – [nTrials x 1] model predictions (raw)
 %      .CRpred       – [nTrials x 1] rescaled predictions
 %      .LL, .BIC     – fit statistics
 %      .nPar         – effective free parameters (eta, kappa, b0, b1, sigma)
 
     T = sortrows(T, 'TrialGlobal');
-    nTrials = height(T);
 
-    CS = [T.x_face, T.x_house];
-    US = T.TargetVAS / 100;
-    CR = T.VASRating;
+    % determine w_fixed 
+    keep = strcmp(T.Phase,'conditioning') & T.VASResponse==1 & T.CatchTrial==0;
+    C = T(keep,:);
+    av_house = mean(C.VASRating(strcmp(C.VisualCategory,'house')), 'omitnan');
+    av_face  = mean(C.VASRating(strcmp(C.VisualCategory,'face')),  'omitnan');
+    w_fixed = [av_face; av_house]/100;
+
+    % extract experimental data from test phase 
+    testMask = ~strcmp(T.Phase,'conditioning'); % & T.VASResponse==1 & T.CatchTrial==0 & ~isnan(T.VASRating);
+    testT = T(testMask,:);
+
+    CS = [testT.x_face, testT.x_house];
+    US = testT.TargetVAS / 100;
+    CR = testT.VASRating;
+    nTrials = height(testT);
 
     % Grid search over eta and kappa
-    etaGrid   = linspace(0.01, 1, 30);
     kappaGrid = linspace(0, 1, 30);
-    bestLL    = -Inf;
-    bestP     = [NaN NaN];
+    bestLL    = -Inf;     
+    LLgrid = zeros(size(kappaGrid));
+    bestK     = NaN; % best kappa
 
-    for i = 1:numel(etaGrid)
-        for j = 1:numel(kappaGrid)
-            V  = bcc_forward(CS, US, etaGrid(i), kappaGrid(j));
-            LL = rescaled_LL(V, CR);
-            if LL > bestLL
-                bestLL = LL;
-                bestP  = [etaGrid(i), kappaGrid(j)];
-            end
+    for j = 1:numel(kappaGrid)
+        R  = bcc_forward(CS, US, w_fixed,  kappaGrid(j));
+        LL = rescaled_LL(R, CR);
+        LLgrid(j) = LL;
+        if LL > bestLL
+            bestLL = LL;
+            bestK  = kappaGrid(j);
         end
     end
 
     % Refine with fmincon
-    obj = @(p) -rescaled_LL(bcc_forward(CS, US, p(1), p(2)), CR);
+    obj = @(k) -rescaled_LL(bcc_forward(CS, US, w_fixed, k), CR);
     opts_opt = optimoptions('fmincon','Display','off');
-    pOpt = fmincon(obj, bestP, [],[],[],[], [0.001 0], [1 1], [], opts_opt);
+    kOpt = fmincon(obj, bestK, [],[],[],[], 0, 1, [], opts_opt);
 
-    V = bcc_forward(CS, US, pOpt(1), pOpt(2));
-    [LL, b0, b1, sigma] = rescaled_LL(V, CR);
+    [R, V] = bcc_forward(CS, US, w_fixed, kOpt);
+    [LL, b0, b1, sigma] = rescaled_LL(R, CR);
+    
 
-    results.eta    = pOpt(1);
-    results.kappa  = pOpt(2);
+    results.kappa  = kOpt;
+    results.R      = R; 
     results.V      = V;
-    results.CRpred = b0 + b1 * V;
+    results.CRpred = b0 + b1 * R;
     results.LL     = LL;
-    results.nPar   = 5;                    % eta, kappa, b0, b1, sigma
+    results.nPar   = 4;                    % kappa, b0, b1, sigma
     results.BIC    = -2*LL + results.nPar * log(nTrials);
     results.b0     = b0;
     results.b1     = b1;
     results.sigma  = sigma;
+
+    % ---- profile check: LL across the kappa grid ----
+    figure('Color','w'); plot(kappaGrid, LLgrid, '-o'); hold on
+    xline(kOpt, 'r--', sprintf('\\kappa_{opt}=%.3f', kOpt));
+    xlabel('\kappa'); ylabel('log-likelihood'); box off
+    title(sprintf('Sub %d: LL profile over \\kappa', T.SubID(1)));
 end
 
 
 %% ========================================================================
-function V = bcc_forward(CS, US, eta, kappa)
-%BCC_FORWARD  Run BCC model forward.
-%  Prior is learned via delta rule on the delivered US (not perceived pain).
-%  Perceived pain = kappa * prior + (1-kappa) * sensory input.
+function [R, V] = bcc_forward(CS, US, w_fixed, kappa)
     nTrials = size(CS, 1);
-    w = [0.5; 0.5];
     V = zeros(nTrials, 1);
+    R = zeros(nTrials, 1);
     for t = 1:nTrials
-        x = CS(t,:)';
-        mu_prior = w' * x;               % top-down prior
+        x = CS(t,:);
         s = US(t);                        % bottom-up sensory signal
-        V(t) = kappa * mu_prior + (1 - kappa) * s;
-
-        % Update weights using delivered US (not perceived pain)
-        delta = US(t) - mu_prior;
-        w = w + eta * x * delta;
+        V(t) = x * w_fixed;
+        R(t) = kappa * V(t) + (1-kappa) * s;
     end
 end
 
 
 %% ========================================================================
-function [LL, b0, b1, sigma] = rescaled_LL(V, CR)
-%RESCALED_LL  Log-likelihood after linear rescaling V -> CR.
+function [LL, b0, b1, sigma] = rescaled_LL(R, CR)
     n  = numel(CR);
-    X  = [ones(n,1), V(:)];
+    X  = [ones(n,1), R(:)];
     b  = X \ CR(:);
     b0 = b(1);  b1 = b(2);
     pred  = X * b;
