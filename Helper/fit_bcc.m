@@ -27,7 +27,7 @@ function results = fit_bcc(T)
     T = sortrows(T, 'TrialGlobal');
 
     % determine w_fixed 
-    keep = strcmp(T.Phase,'conditioning') & T.VASResponse==1 & T.CatchTrial==0;
+    keep = strcmp(T.Phase,'conditioning'); %& T.VASResponse==1 & T.CatchTrial==0;
     C = T(keep,:);
     av_house = mean(C.VASRating(strcmp(C.VisualCategory,'house')), 'omitnan');
     av_face  = mean(C.VASRating(strcmp(C.VisualCategory,'face')),  'omitnan');
@@ -78,11 +78,11 @@ function results = fit_bcc(T)
     results.b1     = b1;
     results.sigma  = sigma;
 
-    % ---- profile check: LL across the kappa grid ----
-    figure('Color','w'); plot(kappaGrid, LLgrid, '-o'); hold on
-    xline(kOpt, 'r--', sprintf('\\kappa_{opt}=%.3f', kOpt));
-    xlabel('\kappa'); ylabel('log-likelihood'); box off
-    title(sprintf('Sub %d: LL profile over \\kappa', T.SubID(1)));
+    % % ---- check: LL across the kappa grid ----
+    % figure('Color','w'); plot(kappaGrid, LLgrid, '-o'); hold on
+    % xline(kOpt, 'r--', sprintf('\\kappa_{opt}=%.3f', kOpt));
+    % xlabel('\kappa'); ylabel('log-likelihood'); box off
+    % title(sprintf('Sub %d: LL profile over \\kappa', T.SubID(1)));
 end
 
 
