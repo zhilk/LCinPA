@@ -81,8 +81,8 @@ function R = run_study_models(T, studyLabel)
     LL_LCM  = nan(nSub, 1);
     logBF   = nan(nSub, 1);
     eta_RW  = nan(nSub, 1);
-    eta_BCC = nan(nSub, 1);
-    kappa   = nan(nSub, 1);
+    kappa_RW = nan(nSub, 1);
+    kappa_BCC   = nan(nSub, 1);
     alpha   = nan(nSub, 1);
     bestModel = cell(nSub, 1);
 
@@ -116,9 +116,11 @@ function R = run_study_models(T, studyLabel)
         LL_BCC(i)  = resBCC.LL;
         LL_LCM(i)  = resLCM.LL;
         logBF(i)   = resLCM.logBF_vs_rw;
+
+        % model parameter
         eta_RW(i)  = resRW.eta;
-        eta_BCC(i) = resBCC.eta;
-        kappa(i)   = resBCC.kappa;
+        kappa_RW(i) = resRW.kappa;
+        kappa_BCC(i)   = resBCC.kappa;
         alpha(i)   = resLCM.alpha_map;
         allRW{i}   = resRW;
         allBCC{i}  = resBCC;
@@ -198,14 +200,14 @@ function R = run_study_models(T, studyLabel)
     end
     fprintf('done.\n');
 
-    % ── Per-subject table ──
-    fprintf('\n%-6s %8s %8s %8s | %7s %6s %6s %6s | %s\n', ...
-        'SubID','BIC_RW','BIC_BCC','BIC_LCM','logBF','eta_RW','kappa','alpha','Best');
-    fprintf('%s\n', repmat('-',1,75));
+        % ── Per-subject table ──
+    fprintf('\n%-6s %8s %8s %8s | %7s %7s %8s %8s %6s | %s\n', ...
+        'SubID','BIC_RW','BIC_BCC','BIC_LCM','logBF','eta RW','kappa RW','kappa BCC','alpha','Best');
+    fprintf('%s\n', repmat('-',1,84));
     for i = 1:nSub
-        fprintf('%-6d %8.1f %8.1f %8.1f | %7.2f %6.3f %6.3f %6.3f | %s\n', ...
+        fprintf('%-6d %8.1f %8.1f %8.1f | %7.2f %7.3f %8.3f %8.3f %6.3f | %s\n', ...
             subs(i), BIC_RW(i), BIC_BCC(i), BIC_LCM(i), logBF(i), ...
-            eta_RW(i), kappa(i), alpha(i), bestModel{i});
+            eta_RW(i), kappa_RW(i), kappa_BCC(i), alpha(i), bestModel{i});
     end
 
     % ── Aggregate statistics ──
@@ -226,7 +228,7 @@ function R = run_study_models(T, studyLabel)
     fprintf('  Mean alpha:  %.3f +/- %.3f\n', mean(alpha), std(alpha));
 
     fprintf('\n── Parameter Distributions ──\n');
-    fprintf('  Mean kappa (BCC):  %.3f +/- %.3f\n', mean(kappa), std(kappa));
+    fprintf('  Mean kappa (BCC):  %.3f +/- %.3f\n', mean(kappa_BCC), std(kappa_BCC));
     fprintf('  Mean eta (RW):  %.3f +/- %.3f\n', mean(eta_RW), std(eta_RW));
 
     % ── Cause assignment analysis (block-reset LCM) ──
@@ -281,9 +283,9 @@ function R = run_study_models(T, studyLabel)
     end
 
     % BCC kappa vs. behavioral effect
-    both_valid = valid_obs & ~isnan(kappa);
+    both_valid = valid_obs & ~isnan(kappa_BCC);
     if sum(both_valid) >= 5
-        [rho_kappa, pval_kappa] = corr(kappa(both_valid), ...
+        [rho_kappa, pval_kappa] = corr(kappa_BCC(both_valid), ...
             dir_obs(both_valid), 'Type', 'Spearman');
         fprintf('    BCC kappa vs. behav: rho = %.3f, p = %.4f\n', rho_kappa, pval_kappa);
     end
@@ -348,9 +350,10 @@ function R = run_study_models(T, studyLabel)
     R.LL_BCC          = LL_BCC;
     R.LL_LCM          = LL_LCM;
     R.logBF_LCM_vs_RW = logBF;
+
     R.eta_RW          = eta_RW;
-    R.eta_BCC         = eta_BCC;
-    R.kappa           = kappa;
+    R.kappa_RW        = kappa_RW;
+    R.kappa_BCC       = kappa_BCC;
     R.alpha           = alpha;
     R.bestModel       = bestModel;
     R.sumBIC_RW       = sum(BIC_RW);
