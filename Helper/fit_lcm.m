@@ -1,5 +1,6 @@
 function results = fit_lcm(T, resetBlocks)
-%FIT_LCM  Fit Latent Cause Model to one participant's data.
+
+%   Fit Latent Cause Model to one participant's data.
 %
 %  Marginalizes over alpha (concentration parameter) via grid integration.
 %  Variance parameters are optimized via outer grid search.
