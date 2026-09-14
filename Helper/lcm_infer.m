@@ -12,8 +12,8 @@ function results = lcm_infer(X, opts)
 %           .stickiness – stickiness for most recent cause (default 0)
 %           .lambda     – temporal decay rate for cause counts (default 0)
 %                         Nk = exp(-lambda) * Nk on each trial (Heesink et al., 2024)
-%           .a          – Beta prior pseudocount (default 1)
-%           .b          – Beta prior pseudocount (default 1)
+%           .a_pseudo   – stength of shrinkage 
+%           .mu0        - prior mean (.5) 
 %           .K          – initial max number of causes (default 10)
 %           .sigma_cs   – CS feature variance (default 0.5)
 %           .sigma_us   – US feature variance (default 0.5)
@@ -77,7 +77,7 @@ function results = lcm_infer(X, opts)
 
                 % --- CRP prior  for particle m ---
                 prior = Nk(m, :);
-                prior(m, z_prev(m)) = prior(z_prev(m)) + opts.stickiness;
+                prior(z_prev(m)) = prior(z_prev(m)) + opts.stickiness;
                 idx_new = find(prior == 0, 1);
     
                 if isempty(idx_new) % Expand capacity
@@ -90,7 +90,7 @@ function results = lcm_infer(X, opts)
                 prior(idx_new) = opts.alpha;
                 prior = prior / sum(prior);
     
-                % --- Likelihood for particle ---
+                % --- Likelihood for cause ---
                 lik = zeros(1, K); lik_cs = zeros(1, K);
                 for k = 1:K
                     log_lik_full = 0; log_lik_cs   = 0;
@@ -186,7 +186,6 @@ function opts = set_defaults(opts)
     if ~isfield(opts,'lambda')     || isempty(opts.lambda);     opts.lambda = 0;    end
     if ~isfield(opts,'M')          || isempty(opts.M);          opts.M = 1;     end
     if ~isfield(opts,'a')          || isempty(opts.a);          opts.a = 1;         end
-    if ~isfield(opts,'b')          || isempty(opts.b);          opts.b = 1;         end
     if ~isfield(opts,'K')          || isempty(opts.K);          opts.K = 10;        end
     if ~isfield(opts,'sigma_cs')   || isempty(opts.sigma_cs);   opts.sigma_cs = 0.5; end
     if ~isfield(opts,'sigma_us')   || isempty(opts.sigma_us);   opts.sigma_us = 0.5; end
