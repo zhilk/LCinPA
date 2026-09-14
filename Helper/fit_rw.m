@@ -82,6 +82,7 @@ function results = fit_rw(T)
     [LL, b0, b1, sigma] = rescaled_LL(R, CR);
 
     % Store results
+    results.w0     = w0;
     results.eta    = etaOpt;
     results.kappa  = kappaOpt; 
     results.R      = R;

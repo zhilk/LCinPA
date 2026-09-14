@@ -66,7 +66,7 @@ function results = fit_bcc(T)
     [R, V] = bcc_forward(CS, US, w_fixed, kOpt);
     [LL, b0, b1, sigma] = rescaled_LL(R, CR);
     
-
+    results.w_fixed= w_fixed;
     results.kappa  = kOpt;
     results.R      = R; 
     results.V      = V;
