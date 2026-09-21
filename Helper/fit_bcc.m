@@ -1,4 +1,4 @@
-function results = fit_bcc(T)
+function results = fit_bcc(subT)
 
 %  Fit Bayesian Cue Combination model to one participant's data.
 %
@@ -13,7 +13,7 @@ function results = fit_bcc(T)
 %      V(t) = CS(t) * w_fixed 
 %
 %  INPUT:
-%    T – table for one subject, sorted by TrialGlobal, with columns:
+%    subT – table for one subject, sorted by TrialGlobal, with columns:
 %         x_face, x_house, TargetVAS, VASRating, Phase, Block, VisualCategory
 %
 %  OUTPUT:
@@ -24,18 +24,31 @@ function results = fit_bcc(T)
 %      .LL, .BIC     – fit statistics
 %      .nPar         – effective free parameters (eta, kappa, b0, b1, sigma)
 
-    T = sortrows(T, 'TrialGlobal');
+    subT = sortrows(subT, 'TrialGlobal');
 
-    % determine w_fixed 
-    keep = strcmp(T.Phase,'conditioning'); %& T.VASResponse==1 & T.CatchTrial==0;
-    C = T(keep,:);
-    av_house = mean(C.VASRating(strcmp(C.VisualCategory,'house')), 'omitnan');
-    av_face  = mean(C.VASRating(strcmp(C.VisualCategory,'face')),  'omitnan');
-    w_fixed = [av_face; av_house]/100;
+    % determine w_fixed PER BLOCK 
+    blocks = subT.Block;
+    if iscell(blocks); blocks = string(blocks); end
+    ub = unique(blocks, 'stable');          % block labels in order
 
-    % extract experimental data from test phase 
-    testMask = ~strcmp(T.Phase,'conditioning'); % & T.VASResponse==1 & T.CatchTrial==0 & ~isnan(T.VASRating);
-    testT = T(testMask,:);
+    wFixed_byblock = cell(numel(ub),1);
+    for bi = 1:numel(ub)
+        c = subT(blocks==ub(bi) & strcmp(subT.Phase,'conditioning'), :);
+        avh = mean(c.VASRating(strcmp(c.VisualCategory,'house')), 'omitnan');
+        avf = mean(c.VASRating(strcmp(c.VisualCategory,'face')),  'omitnan');
+        wFixed_byblock{bi} = [avf; avh]/100;
+    end
+
+    % test trials, tagged by which block they belong to ---
+    testMask = ~strcmp(subT.Phase,'conditioning'); % & subT.VASResponse==1 & subT.CatchTrial==0 & ~isnan(subT.VASRating);
+    testT    = subT(testMask,:);
+    tb       = testT.Block; if iscell(tb); tb = string(tb); end
+
+    % map w_fixed to its block's 
+    wFixed_seq = zeros(2, height(testT));       % 2 features x nTestTrials
+    for bi = 1:numel(ub)
+        wFixed_seq(:, tb==ub(bi)) = repmat(wFixed_byblock{bi}, 1, nnz(tb==ub(bi)));
+    end
 
     CS = [testT.x_face, testT.x_house];
     US = testT.TargetVAS / 100;
@@ -49,7 +62,7 @@ function results = fit_bcc(T)
     bestK     = NaN; % best kappa
 
     for j = 1:numel(kappaGrid)
-        R  = bcc_forward(CS, US, w_fixed,  kappaGrid(j));
+        R  = bcc_forward(CS, US, wFixed_seq, kappaGrid(j));
         LL = rescaled_LL(R, CR);
         LLgrid(j) = LL;
         if LL > bestLL
@@ -59,14 +72,14 @@ function results = fit_bcc(T)
     end
 
     % Refine with fmincon
-    obj = @(k) -rescaled_LL(bcc_forward(CS, US, w_fixed, k), CR);
+    obj = @(k) -rescaled_LL(bcc_forward(CS, US, wFixed_seq, k), CR);
     opts_opt = optimoptions('fmincon','Display','off');
     kOpt = fmincon(obj, bestK, [],[],[],[], 0, 1, [], opts_opt);
 
-    [R, V] = bcc_forward(CS, US, w_fixed, kOpt);
+    [R, V] = bcc_forward(CS, US, wFixed_seq, kOpt);
     [LL, b0, b1, sigma] = rescaled_LL(R, CR);
     
-    results.w_fixed= w_fixed;
+    results.wFixed = wFixed_byblock;
     results.kappa  = kOpt;
     results.R      = R; 
     results.V      = V;
@@ -82,19 +95,18 @@ function results = fit_bcc(T)
     % figure('Color','w'); plot(kappaGrid, LLgrid, '-o'); hold on
     % xline(kOpt, 'r--', sprintf('\\kappa_{opt}=%.3f', kOpt));
     % xlabel('\kappa'); ylabel('log-likelihood'); box off
-    % title(sprintf('Sub %d: LL profile over \\kappa', T.SubID(1)));
+    % title(sprintf('Sub %d: LL profile over \\kappa', subT.SubID(1)));
 end
 
 
 %% ========================================================================
-function [R, V] = bcc_forward(CS, US, w_fixed, kappa)
+function [R, V] = bcc_forward(CS, US, wFixed_seq, kappa)
     nTrials = size(CS, 1);
     V = zeros(nTrials, 1);
     R = zeros(nTrials, 1);
     for t = 1:nTrials
-        x = CS(t,:);
-        s = US(t);                        % bottom-up sensory signal
-        V(t) = x * w_fixed;
+        s = US(t);
+        V(t) = CS(t,:) * wFixed_seq(:,t);
         R(t) = kappa * V(t) + (1-kappa) * s;
     end
 end

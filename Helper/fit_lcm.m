@@ -1,4 +1,4 @@
-function results = fit_lcm(T, resetBlocks)
+function results = fit_lcm(subT, resetBlocks)
 
 %   Fit Latent Cause Model to one participant's data.
 %
@@ -6,7 +6,7 @@ function results = fit_lcm(T, resetBlocks)
 %  Variance parameters are optimized via outer grid search.
 %
 %  INPUTS:
-%    T            – table for one subject (sorted by TrialGlobal)
+%    subT            – table for one subject (sorted by TrialGlobal)
 %    resetBlocks  – logical; if true, reinitialize causes at block boundary
 %                   (default: false = full carry-over)
 %
@@ -26,17 +26,17 @@ function results = fit_lcm(T, resetBlocks)
 
     if nargin < 2; resetBlocks = false; end
 
-    T = sortrows(T, 'TrialGlobal');
-    nTrials = height(T);
+    subT = sortrows(subT, 'TrialGlobal');
+    nTrials = height(subT);
 
     % Build stimulus matrix: [US, CS_face, CS_house]
-    US = T.TargetVAS / 100;
-    CS = [T.x_face, T.x_house];
-    CR = T.VASRating;
+    US = subT.TargetVAS / 100;
+    CS = [subT.x_face, subT.x_house];
+    CR = subT.VASRating;
     X  = [US, CS];
 
     % Find block boundary (if two blocks exist)
-    blocks = T.Block;
+    blocks = subT.Block;
     if iscell(blocks); blocks = string(blocks); end
     blockChange = [];
     if resetBlocks

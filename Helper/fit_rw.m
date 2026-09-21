@@ -1,4 +1,4 @@
-function results = fit_rw(T)
+function results = fit_rw(subT)
 %  Fit Rescorla-Wagner model to one participant's trial-level data.
 
 %  Extension of the BCC (Büchel et al., 2014) model with in which perceived pain is a
@@ -16,7 +16,7 @@ function results = fit_rw(T)
 
 %
 %  INPUT:
-%    T – table for one subject, sorted by TrialGlobal, with columns:
+%    subT – table for one subject, sorted by TrialGlobal, with columns:
 %         x_face, x_house, TargetVAS, VASRating, Phase, Block, VisualCategory
 %
 %  OUTPUT:
@@ -31,18 +31,34 @@ function results = fit_rw(T)
 %      .b0, .b1   – rescaling parameters
 %      .sigma     – noise SD
 
-    T = sortrows(T, 'TrialGlobal');
+    subT = sortrows(subT, 'TrialGlobal');
 
-    % determine w_fixed 
-    keep = strcmp(T.Phase,'conditioning'); %& T.VASResponse==1 & T.CatchTrial==0;
-    C = T(keep,:);
-    av_house = mean(C.VASRating(strcmp(C.VisualCategory,'house')), 'omitnan');
-    av_face  = mean(C.VASRating(strcmp(C.VisualCategory,'face')),  'omitnan');
-    w_0 = [av_face; av_house]/100;
+    % --- per-block conditioning w0_seq ---
+    blocks = subT.Block;
+    if iscell(blocks); blocks = string(blocks); end
+    ub = unique(blocks, 'stable');          % block labels in order
 
-    % extract experimental data from test phase 
-    testMask = ~strcmp(T.Phase,'conditioning'); % & T.VASResponse==1 & T.CatchTrial==0 & ~isnan(T.VASRating);
-    testT = T(testMask,:);
+    w0_byblock = cell(numel(ub),1);
+    for bi = 1:numel(ub)
+        c = subT(blocks==ub(bi) & strcmp(subT.Phase,'conditioning'), :);
+        avh = mean(c.VASRating(strcmp(c.VisualCategory,'house')), 'omitnan');
+        avf = mean(c.VASRating(strcmp(c.VisualCategory,'face')),  'omitnan');
+        w0_byblock{bi} = [avf; avh]/100;
+    end
+
+    % test trials, tagged by which block they belong to ---
+    testMask = ~strcmp(subT.Phase,'conditioning'); % & subT.VASResponse==1 & subT.CatchTrial==0 & ~isnan(subT.VASRating);
+    testT    = subT(testMask,:);
+    tb       = testT.Block; if iscell(tb); tb = string(tb); end
+
+    % map w0 to its block's 
+    w0_seq = zeros(2, height(testT));       % 2 features x nTestTrials
+    for bi = 1:numel(ub)
+        w0_seq(:, tb==ub(bi)) = repmat(w0_byblock{bi}, 1, nnz(tb==ub(bi)));
+    end
+
+    % reset index = first test trial of each block after the first
+    resetIdx = find(tb(2:end) ~= tb(1:end-1)) + 1;
 
     CS = [testT.x_face, testT.x_house];
     US = testT.TargetVAS / 100;
@@ -61,7 +77,7 @@ function results = fit_rw(T)
         for i = 1:numel(etaGrid)
             eta = etaGrid(i);
             kappa = kappaGrid (k);
-            R   = rw_forward(CS, US, eta, kappa, w_0);
+            [R, ~]   = rw_forward(CS, US, eta, kappa, w0_seq, resetIdx);
             LL  = rescaled_LL(R, CR);
             if LL > bestLL
                 bestLL  = LL;
@@ -73,16 +89,17 @@ function results = fit_rw(T)
     end
 
     % Refine with fmincon
-    obj = @(p) -rescaled_LL(rw_forward(CS, US, p(1), p(2), w_0), CR);
+    obj = @(p) -rescaled_LL(rw_forward(CS, US, p(1), p(2), w0_seq, resetIdx), CR);
     opts_opt = optimoptions('fmincon','Display','off');
     pOpt = fmincon(obj, [bestEta bestKappa], [],[],[],[], [0.001 0], [1 1], [], opts_opt);
     etaOpt   = pOpt(1);kappaOpt = pOpt(2);
 
-    R  = rw_forward(CS, US, etaOpt, kappaOpt, w_0);
+    [R, W]  = rw_forward(CS, US, etaOpt, kappaOpt, w0_seq, resetIdx);
     [LL, b0, b1, sigma] = rescaled_LL(R, CR);
 
     % Store results
-    results.w0     = w0;
+    results.w0     = w0_byblock;
+    results.w      = W;
     results.eta    = etaOpt;
     results.kappa  = kappaOpt; 
     results.R      = R;
@@ -97,12 +114,17 @@ end
 
 
 %% ========================================================================
-function R = rw_forward(CS, US, eta, kappa, w_0)
+function [R, W] = rw_forward(CS, US, eta, kappa, w0_seq, resetIdx)
     nTrials = size(CS, 1);
-    w = w_0;                       % initialize at midpoint
+    w = w0_seq(:,1);                       % initialize at av rating from conditioning
     V = zeros(nTrials, 1);
     R = zeros(nTrials, 1);
+    W = zeros(nTrials, numel(w));          % weight vector 
     for t = 1:nTrials
+        if any(t == resetIdx)
+            w = w0_seq(:,t);           % reset to this block's conditioning prior
+        end
+        W(t,:) = w';
         x = CS(t,:)';
         s = US(t); 
         V(t) = w' * x;

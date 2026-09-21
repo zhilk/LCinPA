@@ -1,70 +1,194 @@
-function plot_conditioning(behavioralData, expIdx, opts)
+%% conditioning: overlay experiments, faceted by BLOCK TYPE (nocebo/placebo)
+expList           = 1:3;
+ExcludeNoResponse = true;
+ExcludeCatch      = true;
+runVar            = 'Block';                         % <-- manipulation, not BlockOrder
+expCols           = [.20 .40 .80; .85 .30 .30; .30 .65 .35];
+cues              = {'high','low'};
 
-%  (1) per-subject High vs Low means, (2) time course during conditioning.
-%  ugly at the moment - can be fixed if to be included. 
-
-    arguments
-        behavioralData cell
-        expIdx (1,1) double = 1
-        opts.ExcludeNoResponse (1,1) logical = true
-        opts.ExcludeCatch      (1,1) logical = true
-    end
-
-    T = behavioralData{expIdx};
+% ---------- long table across experiments ----------
+LT = table();
+for e = expList
+    T    = behavioralData{e};
     keep = strcmp(T.Phase,'conditioning');
-    if opts.ExcludeNoResponse && ismember('VASResponse', T.Properties.VariableNames)
+    if ExcludeNoResponse && ismember('VASResponse',T.Properties.VariableNames)
         keep = keep & T.VASResponse == 1;
     end
-    if opts.ExcludeCatch && ismember('CatchTrial', T.Properties.VariableNames)
+    if ExcludeCatch && ismember('CatchTrial',T.Properties.VariableNames)
         keep = keep & T.CatchTrial == 0;
     end
-    C = sortrows(T(keep,:), {'SubID','TrialInPhase'});   % order for the time course
+    Te = sortrows(T(keep,:), {'SubID','Block','TrialInBlock'});
+    Te.exp   = repmat(e, height(Te), 1);
+    Te.runid = string(Te.(runVar));                  % block type as string
 
-    subs = unique(C.SubID);
-    nS   = numel(subs);
-
-    % ---------- per-subject means ----------
-    hMean = nan(nS,1); lMean = nan(nS,1);
-    for s = 1:nS
-        r = C.SubID == subs(s);
-        hMean(s) = mean(C.VASRating(r & strcmp(C.CueAssociation,'high')), 'omitnan');
-        lMean(s) = mean(C.VASRating(r & strcmp(C.CueAssociation,'low')),  'omitnan');
+    % ordinal trial within subject x block x cue (resets per block)
+    g   = findgroups(Te.SubID, Te.runid, Te.CueAssociation);
+    ord = zeros(height(Te),1);
+    for k = 1:max(g)
+        idx = find(g==k);  ord(idx) = 1:numel(idx);
     end
+    Te.ord = ord;
 
-    figure('Color','w','Name',sprintf('Exp %d: per-subject means', expIdx)); hold on
-    for s = 1:nS
-        plot([1 2], [hMean(s) lMean(s)], '-', 'Color', [.7 .7 .7 .4]);
+    LT = [LT; Te(:, {'exp','runid','SubID','CueAssociation','VASRating','ord'})];
+end
+
+runs = unique(LT.runid);        % ["nocebo","placebo"]
+nRun = numel(runs);
+
+% ---------- per-subject / group means ----------
+figure('Color','w','Name','Conditioning: High vs Low means');
+for ri = 1:nRun
+    subplot(1,nRun,ri); hold on
+    for ei = 1:numel(expList)
+        e = expList(ei);
+        for ci = 1:2
+            sel  = LT.exp==e & LT.runid==runs(ri) & strcmp(LT.CueAssociation,cues{ci});
+            subs = unique(LT.SubID(sel));
+            if isempty(subs), continue; end
+            pm   = arrayfun(@(s) mean(LT.VASRating(sel & LT.SubID==s),'omitnan'), subs);
+            xpos = ci + (ei-2)*0.12;
+            errorbar(xpos, mean(pm,'omitnan'), std(pm,'omitnan')/sqrt(numel(subs)), ...
+                     'o', 'Color', expCols(ei,:), 'MarkerFaceColor', expCols(ei,:), ...
+                     'CapSize', 8, 'LineWidth', 1.2, 'HandleVisibility','off');
+        end
     end
-    plot(1, hMean, 'o', 'MarkerFaceColor', [.2 .4 .8], 'MarkerEdgeColor','none');
-    plot(2, lMean, 'o', 'MarkerFaceColor', [.85 .3 .3], 'MarkerEdgeColor','none');
-    errorbar([1 2], [mean(hMean,'omitnan') mean(lMean,'omitnan')], ...
-             [std(hMean,'omitnan') std(lMean,'omitnan')] ./ sqrt(nS), ...
-             'k-', 'LineWidth', 2, 'CapSize', 12, 'Marker','s', 'MarkerFaceColor','k');
     xlim([.5 2.5]); xticks([1 2]); xticklabels({'High','Low'});
-    ylabel('Mean VAS rating (conditioning)'); box off
-    title(sprintf('Exp %d: per-subject High vs Low (n=%d)', expIdx, nS));
-
-    % ---------- time course (ordinal within category) ----------
-    maxH = max(arrayfun(@(s) sum(C.SubID==s & strcmp(C.CueAssociation,'high')), subs));
-    maxF = max(arrayfun(@(s) sum(C.SubID==s & strcmp(C.CueAssociation,'low')),  subs));
-    Hmat = nan(nS, maxH); Lmat = nan(nS, maxF);
-    for s = 1:nS
-        rs = C(C.SubID==subs(s), :);                       % already time-sorted
-        hv = rs.VASRating(strcmp(rs.CueAssociation,'high'));
-        lv = rs.VASRating(strcmp(rs.CueAssociation,'low'));
-        Hmat(s,1:numel(hv)) = hv;
-        Lmat(s,1:numel(lv)) = lv;
+    ylabel('Mean VAS'); box off; title(runs(ri));
+    if ri==nRun
+        for ei = 1:numel(expList)
+            plot(nan,nan,'o','Color',expCols(ei,:),'MarkerFaceColor',expCols(ei,:), ...
+                 'DisplayName',sprintf('Exp %d',expList(ei)));
+        end
+        legend('show','Location','best');
     end
-    mH = mean(Hmat,1,'omitnan'); seH = std(Hmat,0,1,'omitnan')./sqrt(sum(~isnan(Hmat),1));
-    mL = mean(Lmat,1,'omitnan'); seL = std(Lmat,0,1,'omitnan')./sqrt(sum(~isnan(Lmat),1));
+end
 
-    figure('Color','w','Name',sprintf('Exp %d: conditioning time course', expIdx)); hold on
-    errorbar(1:maxH, mH, seH, '-o', 'Color',[.2 .4 .8], 'MarkerFaceColor',[.2 .4 .8], ...
-             'CapSize',0, 'DisplayName','High');
-    errorbar(1:maxF, mL, seL, '-o', 'Color',[.85 .3 .3], 'MarkerFaceColor',[.85 .3 .3], ...
-             'CapSize',0, 'DisplayName','Low');
-    xlabel('Trial number within category (conditioning)');
-    ylabel('Mean VAS rating \pm SEM'); box off
-    legend('Location','best');
-    title(sprintf('Exp %d: conditioning time course', expIdx));
+% ---------- time course (ordinal within category, reset per block) ----------
+figure('Color','w','Name','Conditioning: time course');
+for ri = 1:nRun
+    subplot(1,nRun,ri); hold on
+    for ei = 1:numel(expList)
+        e = expList(ei);
+        for ci = 1:2
+            sel  = LT.exp==e & LT.runid==runs(ri) & strcmp(LT.CueAssociation,cues{ci});
+            maxo = max(LT.ord(sel));
+            if isempty(maxo)||maxo==0, continue; end
+            m = nan(1,maxo); se = nan(1,maxo);
+            for o = 1:maxo
+                v     = LT.VASRating(sel & LT.ord==o);
+                m(o)  = mean(v,'omitnan');
+                se(o) = std(v,'omitnan')/sqrt(sum(~isnan(v)));
+            end
+            ls = '-'; if ci==2, ls='--'; end
+            errorbar(1:maxo, m, se, [ls 'o'], 'Color', expCols(ei,:), ...
+                 'MarkerFaceColor', expCols(ei,:), 'CapSize', 0, ...
+                 'HandleVisibility','off');
+        end
+    end
+    xlabel('Conditioning trial within category'); ylabel('Mean VAS \pm SEM');
+    box off; title(runs(ri));
+    if ri==nRun
+        for ei = 1:numel(expList)
+            plot(nan,nan,'o-','Color',expCols(ei,:),'MarkerFaceColor',expCols(ei,:), ...
+                 'DisplayName',sprintf('Exp %d',expList(ei)));
+        end
+        plot(nan,nan,'k-','DisplayName','High');
+        plot(nan,nan,'k--','DisplayName','Low');
+        legend('show','Location','best');
+    end
+end
+
+% ---------- violin plot means conditioning ----------
+
+cues = {'high','low'};
+runs = unique(LT.runid);
+nRun = numel(runs);
+vw   = 0.35;
+
+figure('Color','w','Name','Conditioning: per-subject means (violins)');
+for ri = 1:nRun
+    subplot(1,nRun,ri); hold on
+    for ci = 1:2
+        for ei = 1:numel(expList)
+            e    = expList(ei);
+            sel  = LT.exp==e & LT.runid==runs(ri) & strcmp(LT.CueAssociation,cues{ci});
+            subs = unique(LT.SubID(sel));
+            pm   = arrayfun(@(s) mean(LT.VASRating(sel & LT.SubID==s),'omitnan'), subs);
+            pm   = pm(~isnan(pm));
+            if numel(pm) < 2, continue; end
+            xpos = (ci-1)*4 + ei;                       % High:1-3, Low:5-7
+
+            localViolin(xpos, pm, vw, expCols(ei,:));
+            jit = (rand(numel(pm),1)-.5)*vw*0.6;
+            plot(xpos+jit, pm, '.', 'Color', expCols(ei,:)*.6, ...
+                 'MarkerSize', 4, 'HandleVisibility','off');
+            plot(xpos, mean(pm), 'ks', 'MarkerFaceColor','k', ...
+                 'MarkerSize', 6, 'HandleVisibility','off');
+        end
+    end
+    xticks([2 6]); xticklabels({'High','Low'}); xlim([0 8]);
+    ylabel('Per-subject mean VAS'); box off; title(runs(ri));
+    if ri==nRun
+        for ei = 1:numel(expList)
+            fill(nan,nan,expCols(ei,:),'FaceAlpha',.35,'EdgeColor',expCols(ei,:), ...
+                 'DisplayName',sprintf('Exp %d',expList(ei)));
+        end
+        legend('show','Location','best');
+    end
+end
+
+function localViolin(xc, v, w, col)
+    [f,xi] = ksdensity(v);
+    f = f / max(f) * w;
+    fill([xc+f, fliplr(xc-f)], [xi, fliplr(xi)], col, ...
+         'FaceAlpha',.35, 'EdgeColor',col, 'HandleVisibility','off');
+end
+
+% ---------- participant variance  ----------
+%% per-participant High vs Low with SEM (block rows x experiment cols)
+expList = 1:3;
+cues    = {'high','low'};
+cueCol = [.85 .30 .30; .20 .40 .80];        % High red, Low blue
+runs    = unique(LT.runid);                 % ["nocebo","placebo"]
+nRun    = numel(runs);
+
+figure('Color','w','Name','Per-participant High vs Low');
+p = 0;
+for ri = 1:nRun
+    for ei = 1:numel(expList)
+        e = expList(ei); p = p + 1;
+        subplot(nRun, numel(expList), p); hold on
+
+        sel0 = LT.exp==e & LT.runid==runs(ri);
+        subs = unique(LT.SubID(sel0));
+
+        % per-subject mean & SEM for each cue
+        M = nan(numel(subs),2); S = nan(numel(subs),2);
+        for ci = 1:2
+            for k = 1:numel(subs)
+                v = LT.VASRating(sel0 & LT.SubID==subs(k) & strcmp(LT.CueAssociation,cues{ci}));
+                v = v(~isnan(v));
+                if ~isempty(v)
+                    M(k,ci) = mean(v);
+                    S(k,ci) = std(v)/sqrt(numel(v));
+                end
+            end
+        end
+
+        x = 1:numel(subs);                         % subjects in SubID order
+        for ci = 1:2
+            errorbar(x, M(:,ci), S(:,ci), 'o', 'Color', cueCol(ci,:), ...
+                     'MarkerFaceColor', cueCol(ci,:), 'MarkerSize', 3, ...
+                     'CapSize', 0, 'LineStyle','none');
+        end
+        xlim([0 numel(subs)+1]); box off
+        title(sprintf('Exp %d — %s', e, runs(ri)));
+        if ei==1, ylabel('Mean VAS \pm SEM'); end
+        if ri==nRun, xlabel('Subject'); end
+        if p==1
+            plot(nan,nan,'o','Color',cueCol(1,:),'MarkerFaceColor',cueCol(1,:),'DisplayName','High');
+            plot(nan,nan,'o','Color',cueCol(2,:),'MarkerFaceColor',cueCol(2,:),'DisplayName','Low');
+            legend('show','Location','best');
+        end
+    end
 end
