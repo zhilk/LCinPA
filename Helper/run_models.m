@@ -102,10 +102,13 @@ function R = run_study_models(T, studyLabel)
         sid = subs(i);
         subT = T(T.SubID == sid, :);
 
+        % remove missing trials & non-responses 
+        subT = subT(subT.VASResponse==1 & ~isnan(subT.VASRating), :);
+
         % Fit all models
         resRW  = fit_rw(subT);
         resBCC = fit_bcc(subT);
-        resLCM = fit_lcm(subT, false);     % full carry-over
+        resLCM = fit_lcm(subT);     % full carry-over
         resLCM_reset = fit_lcm(subT, true); % block reset
 
         % Store model comparison results
