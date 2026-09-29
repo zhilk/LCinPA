@@ -1,5 +1,5 @@
 function results = fit_rw(subT)
-%  
+
 %  Rescorla-Wagner learning model with naive initialisation (.5), fit across
 %  conditioning and test phases.
 %      V(t)   = CS(t) * w_t
@@ -18,7 +18,6 @@ function results = fit_rw(subT)
 
     w_0      = [0.5; 0.5]; % naive, no prior association
     resetIdx = find(blocks(2:end) ~= blocks(1:end-1)) + 1;
-
 
     % Grid search over eta
     etaGrid = linspace(0.01, 1, 50);
@@ -44,7 +43,7 @@ function results = fit_rw(subT)
     pOpt     = fmincon(obj, [bestEta bestKappa], [],[],[],[], [0.001 0], [1 1], [], opts_opt);
     etaOpt   = pOpt(1);kappaOpt = pOpt(2);
 
-    [R, W]  = rw_forward(CS, US, etaOpt, kappaOpt, w_0, resetIdx);
+    [R, W, V] = rw_forward(CS, US, etaOpt, kappaOpt, w_0, resetIdx);
     [LL, b0, b1, sigma] = rescaled_LL(R, CR);
 
     % Store results
@@ -53,6 +52,7 @@ function results = fit_rw(subT)
     results.eta    = etaOpt;
     results.kappa  = kappaOpt; 
     results.R      = R;
+    results.V = V;
     results.CRpred = b0 + b1 * R;
     results.LL     = LL;
     results.nPar   = 5; % eta, kappa, b0, b1, sigma
@@ -64,7 +64,7 @@ end
 
 
 %% ========================================================================
-function [R, W] = rw_forward(CS, US, eta, kappa, w_0, resetIdx)
+function [R, W, V] = rw_forward(CS, US, eta, kappa, w_0, resetIdx)
     nTrials = size(CS, 1);
     w_t = w_0;                       % initialize naive weights
     V = zeros(nTrials, 1);

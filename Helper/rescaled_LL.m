@@ -1,7 +1,7 @@
 function [LL, b0, b1, sigma] = rescaled_LL(pred, CR)
 %RESCALED_LL  Gaussian log-likelihood of ratings under an affine observation model.
 %
-%  Maps a model's raw prediction onto the observed VAS scale via OLS,
+%  Maps a model's raw prediction onto the observed VAS scale via ordinary least squares,
 %      CRpred = b0 + b1 * pred,
 %  and returns the log-likelihood of CR under Gaussian residuals.
 %  b0 absorbs individual rating offset (calibration), b1 the scale gain,
