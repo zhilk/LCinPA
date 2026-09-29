@@ -82,17 +82,3 @@ function [R, W] = rw_forward(CS, US, eta, kappa, w_0, resetIdx)
         w_t = w_t + eta * x * delta;
     end
 end
-
-
-%% ========================================================================
-function [LL, b0, b1, sigma] = rescaled_LL(R, CR)
-    n  = numel(CR);
-    X  = [ones(n,1), R(:)];
-    b  = X \ CR(:);                       % OLS
-    b0 = b(1);
-    b1 = b(2);
-    pred  = X * b;
-    resid = CR(:) - pred;
-    sigma = sqrt(mean(resid.^2));         % ML estimate of sigma; assumes homoskedasticity
-    LL    = -0.5 * n * log(2*pi) - n*log(sigma) - 0.5*sum((resid/sigma).^2);
-end

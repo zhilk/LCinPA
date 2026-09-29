@@ -69,7 +69,7 @@ function R = run_study_models(T, studyLabel)
         % Fit all models
         resRW  = fit_rw(subT);
         resBCC = fit_bcc(subT);
-        resLCM = fit_lcm(subT);     % full carry-over
+        resLCM = fit_lcm(subT);     
 
         % Store model comparison results
         BIC_RW(i)  = resRW.BIC;

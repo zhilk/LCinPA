@@ -69,12 +69,3 @@ function [R, V] = bcc_forward(CS, US, w_seq, kappa)
         R(t) = kappa * V(t) + (1-kappa) * US(t);
     end
 end
-
-%% ========================================================================
-function [LL, b0, b1, sigma] = rescaled_LL(R, CR)
-    n  = numel(CR); X = [ones(n,1), R(:)];
-    b  = X \ CR(:); b0 = b(1); b1 = b(2);
-    resid = CR(:) - X*b;
-    sigma = sqrt(mean(resid.^2));
-    LL = -0.5*n*log(2*pi) - n*log(sigma) - 0.5*sum((resid/sigma).^2);
-end
