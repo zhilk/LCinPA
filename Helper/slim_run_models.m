@@ -55,7 +55,7 @@ function R = run_study_models(T, studyLabel)
 
         sid = subs(i);
         subT = T(T.SubID == sid, :);
-        fprintf('fitting subject %d\n', sid);
+        % fprintf('fitting subject %d\n', sid);
 
         % Study 3 sub 36 excluded: <reason>
         if strcmp(studyLabel, 'Study 3 (fMRI)') && sid == 36
@@ -80,13 +80,13 @@ function R = run_study_models(T, studyLabel)
         LL_LCM(i)  = resLCM.LL;
 
         % model parameter
-        eta_RW(i)  = resRW.eta;
-        kappa_RW(i) = resRW.kappa;
-        kappa_BCC(i)   = resBCC.kappa;
-        kappa_LCM(i) = resLCM.kappa;
-        allRW{i}   = resRW;
-        allBCC{i}  = resBCC;
-        allLCM{i}  = resLCM;
+        eta_RW(i)     = resRW.eta;
+        kappa_RW(i)   = resRW.kappa;
+        kappa_BCC(i)  = resBCC.kappa;
+        kappa_LCM(i)  = resLCM.kappa;
+        allRW{i}      = resRW;
+        allBCC{i}     = resBCC;
+        allLCM{i}     = resLCM;
 
         % Determine winning model
         bics = [resRW.BIC, resBCC.BIC, resLCM.BIC];
@@ -98,13 +98,13 @@ function R = run_study_models(T, studyLabel)
     end
     fprintf('done.\n');
 
-    % ── Per-subject table ──
-    fprintf('\n%-6s %9s %9s %9s | %8s %9s %10s %10s %7s | %s\n', ...
-        'SubID','BIC_RW','BIC_BCC','BIC_LCM', 'eta_RW','kappa_RW','kappa_BCC','kappa_LCM','Best');
-    fprintf('%s\n', repmat('-',1,99));
+        fprintf('\n%-6s %9s %9s %9s | %8s %9s %10s %10s | %s\n', ...
+        'SubID','BIC_RW','BIC_BCC','BIC_LCM','eta_RW','kappa_RW','kappa_BCC','kappa_LCM','Best');
+    fprintf('%s\n', repmat('-',1,92));
     for i = 1:nSub
-        fprintf('%-6d %9.1f %9.1f %9.1f | %8.3f %9.3f %10.3f %10.3f %7.3f | %s\n', ...
-            subs(i), BIC_RW(i), BIC_BCC(i), BIC_LCM(i),  ...
+        if isnan(BIC_RW(i)); continue; end     % skip excluded subjects
+        fprintf('%-6d %9.1f %9.1f %9.1f | %8.3f %9.3f %10.3f %10.3f | %s\n', ...
+            subs(i), BIC_RW(i), BIC_BCC(i), BIC_LCM(i), ...
             eta_RW(i), kappa_RW(i), kappa_BCC(i), kappa_LCM(i), bestModel{i});
     end
 
