@@ -72,7 +72,7 @@ fprintf('median b1: %s\n', sprintf('%7.1f', median(b1,1,'omitnan')));
 fprintf('median sg: %s\n', sprintf('%7.1f', median(sg,1,'omitnan')));
 fprintf('extreme b1 (|b1|>500): %d subjects\n', nnz(any(abs(b1)>500,2)));
 
-s = 1;
+s = 3;
 R = allStudyResults{s};
 outDir = fullfile(pwd, 'plots');                  % existing subfolder
 
