@@ -7,8 +7,8 @@ function results = fit_lcm(subT)
 %  parallel to RW's naive w_0 reset.  Feature SDs fixed; alpha fit by ML.
 
     Kcap     = 10;
-    sigma_cs = 0.02;
-    sigma_us = 0.01;
+    sigma_cs = 0.2;
+    sigma_us = 0.1;
 
     subT   = sortrows(subT, 'TrialGlobal');
     US     = subT.TargetVAS / 100;
