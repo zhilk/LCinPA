@@ -1,10 +1,10 @@
-function results = fit_rw(subT)
+function results = fit_rw_bcc(subT)
 
 %  Rescorla-Wagner learning model with naive initialisation (.5), fit across
-%  conditioning and test phases. No cue-pain integration. 
-%      V(t)    = CS(t) * w_t
+%  conditioning and test phases. Inlcudes cue integration (bcc).
+%      V(t)   = CS(t) * w_t
 %      w_{t+1} = w_t + eta * CS(t) * (US(t) - V(t))
-%      R(t)    = V(t) 
+%      R(t)   = kappa * V(t) + (1 - kappa) * US(t)
 %  Weights reset to naive (0.5, 0.5) at each block boundary.
 
 
@@ -21,35 +21,41 @@ function results = fit_rw(subT)
 
     % Grid search over eta
     etaGrid = linspace(0.01, 1, 50);
+    kappaGrid = linspace(0, 1, 30);
     
-    bestLL  = -Inf; bestEta = NaN;
+    bestLL  = -Inf; bestEta = NaN; bestKappa = NaN;
 
-    for i = 1:numel(etaGrid)
-        eta = etaGrid(i);
-        [R, ~]   = rw_forward(CS, US, eta, w_0, resetIdx);
-        LL  = rescaled_LL(R, CR);
-        if LL > bestLL
-            bestLL  = LL; bestEta = eta; 
+    for k = 1:numel (kappaGrid)
+        for i = 1:numel(etaGrid)
+            eta = etaGrid(i);
+            kappa = kappaGrid (k);
+            [R, ~]   = rw_forward(CS, US, eta, kappa, w_0, resetIdx);
+            LL  = rescaled_LL(R, CR);
+            if LL > bestLL
+                bestLL  = LL; bestEta = eta; bestKappa = kappa; 
+            end
         end
     end
 
     % Refine with fmincon
-    obj      = @(e) -rescaled_LL(rw_forward(CS, US, e, w_0, resetIdx), CR);
+    obj      = @(p) -rescaled_LL(rw_forward(CS, US, p(1), p(2), w_0, resetIdx), CR);
     opts_opt = optimoptions('fmincon','Display','off');
-    etaOpt   = fmincon(obj, bestEta, [],[],[],[], 0.001, 1, [], opts_opt);
+    pOpt     = fmincon(obj, [bestEta bestKappa], [],[],[],[], [0.001 0], [1 1], [], opts_opt);
+    etaOpt   = pOpt(1);kappaOpt = pOpt(2);
 
-    [R, W, V] = rw_forward(CS, US, etaOpt, w_0, resetIdx);
+    [R, W, V] = rw_forward(CS, US, etaOpt, kappaOpt, w_0, resetIdx);
     [LL, b0, b1, sigma] = rescaled_LL(R, CR);
 
     % Store results
     results.w_0    = w_0;
     results.w_t    = W;
     results.eta    = etaOpt;
+    results.kappa  = kappaOpt; 
     results.R      = R;
     results.V = V;
     results.CRpred = b0 + b1 * R;
     results.LL     = LL;
-    results.nPar   = 4; % eta, b0, b1, sigma
+    results.nPar   = 5; % eta, kappa, b0, b1, sigma
     results.BIC    = -2*LL + results.nPar * log(nTrials);
     results.b0     = b0;
     results.b1     = b1;
@@ -58,7 +64,7 @@ end
 
 
 %% ========================================================================
-function [R, W, V] = rw_forward(CS, US, eta, w_0, resetIdx)
+function [R, W, V] = rw_forward(CS, US, eta, kappa, w_0, resetIdx)
     nTrials = size(CS, 1);
     w_t = w_0;                       % initialize naive weights
     V = zeros(nTrials, 1);
@@ -68,8 +74,9 @@ function [R, W, V] = rw_forward(CS, US, eta, w_0, resetIdx)
         if any(t == resetIdx); w_t = w_0; end      % reset at block boundary
         W(t,:) = w_t';
         x = CS(t,:)';
+        s = US(t); 
         V(t) = w_t' * x;
-        R(t) = V(t);
+        R(t) = kappa * V(t) + (1-kappa) * s;
         % weight updating
         delta = US(t) - V(t);
         w_t = w_t + eta * x * delta;
