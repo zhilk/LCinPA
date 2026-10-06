@@ -8,15 +8,14 @@ function results = fit_bcc(subT)
     subT   = sortrows(subT, 'TrialGlobal');
     blocks = string(subT.Block);
     cat    = string(subT.VisualCategory);
-    isCond = strcmp(subT.Phase,'conditioning');
     ub     = unique(blocks,'stable');
 
     % fixed weights = delivered pain per CS per block
     w_byblock = zeros(2, numel(ub));
     for bi = 1:numel(ub)
         b = ub(bi);
-        w_byblock(1,bi) = subT.TargetVAS(find(isCond & blocks==b & cat=="face", 1))/100;
-        w_byblock(2,bi) = subT.TargetVAS(find(isCond & blocks==b & cat=="house",1))/100;
+        w_byblock(1,bi) = subT.TargetVAS(find(blocks==b & cat=="face", 1))/100;
+        w_byblock(2,bi) = subT.TargetVAS(find(blocks==b & cat=="house",1))/100;
     end
 
     % map weights to every trial

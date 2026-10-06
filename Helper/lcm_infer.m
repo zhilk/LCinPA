@@ -95,6 +95,7 @@ function results = lcm_infer(X, opts)
     results.K    = nnz(Nk > 0);
     results.mu0  = mu0;
     results.a    = a;
+    
 end
 
 function opts = set_defaults(opts)

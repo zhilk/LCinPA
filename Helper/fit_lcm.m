@@ -53,7 +53,7 @@ function results = fit_lcm(subT)
     [LL, b0, b1, sigma] = rescaled_LL(R, CR);
 
     % ── structure re-run at fixed alpha = 1 (descriptive, see methods) ──
-    optsB = struct('alpha',1,'stickiness',0,'a',1,'mu0',0.5, ...
+    optsB = struct('alpha',alphaOpt,'stickiness',0,'a',1,'mu0',0.5, ...
                    'K',Kcap,'sigma_cs',sigma_cs,'sigma_us',sigma_us);
     [z, Nk, SumF, condCauses] = run_blocks_struct(X, blocks, ub, condMask, optsB);
     morphMask = abs(CS(:,1)-0.5)<1e-9 & abs(CS(:,2)-0.5)<1e-9;
