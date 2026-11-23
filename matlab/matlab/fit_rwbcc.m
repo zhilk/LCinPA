@@ -2,13 +2,15 @@ function results = fit_rwbcc(subT, scoreMask)
 %FIT_RWBCC  RW learning combined with Bayesian integration: the learned
 %  cue expectation is blended with the delivered stimulus.
 %
-%      V(t)   = w' * CS(t)                    (RW delta rule, see fit_rw)
+%      V(t)   = w' * CS(t)                    (RW delta rule, see fit_rw for weight updating)
 %      R(t)    = kappa * V(t) + (1 - kappa) * US(t)
 %
 %  kappa = 1 reduces to the pure RW model, kappa = 0 to the null model.
-%  Weights reset naive at each block boundary. eta and kappa fit jointly
-%  by grid maximum likelihood (30 x 30). Learning on all trials;
-%  likelihood scored on valid test trials unless scoreMask overrides.
+%  Weights reset naive at each block boundary. 
+% 
+%  eta and kappa fit jointly by grid maximum likelihood (30 x 30). 
+%  Learning on all trials;likelihood scored on valid test trials unless scoreMask overrides.
+%  
 %  nPar = 5 (eta, kappa, b0, b1, sigma).
 
     sub = prep_subject(subT);
