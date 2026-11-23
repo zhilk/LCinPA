@@ -23,6 +23,8 @@ audit is reported in the supplement.
 
 ## Conventions (identical across all six models)
 
+
+- **Stimulus coding.** Stimuli are coded as [1 0] house, [0 1] face and [0.5 0.5] for the morph.
 - **Per-block reset.** Every model begins each block naive: RW weights
   return to [0.5 0.5], the BCC objective weights are defined per block, and
   latent causes form fresh within each block. Motivated by the design: the
