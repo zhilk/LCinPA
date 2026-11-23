@@ -2,13 +2,17 @@ function results = fit_bcc(subT, scoreMask)
 %FIT_BCC  Bayesian cue combination with fixed objective weights: no
 %  learning, the cue expectation is normatively correct from trial one.
 %
-%      V(t) = CS(t) * w_obj(block)      (w_obj = delivered heat per cue)
+%      V(t) = CS(t) * w_obj(block)      (w_obj = delivered heat per cue during conditioning)
 %      R(t) = kappa * V(t) + (1 - kappa) * US(t)
 %
 %  kappa arbitrates between the cue-based expectation and the delivered
-%  stimulus; kappa = 0 reduces to the null model. kappa fit by grid
-%  maximum likelihood (30 values, 0-1). Likelihood scored on valid test
-%  trials unless scoreMask overrides. nPar = 4 (kappa, b0, b1, sigma).
+%  stimulus; kappa = 0 reduces to the null model. 
+% 
+%  kappa fit by grid maximum likelihood (30 values, 0-1). 
+%  
+%  Likelihood scored on valid test trials unless scoreMask overrides. 
+% 
+%  nPar = 4 (kappa, b0, b1, sigma).
 
     sub = prep_subject(subT);
     if nargin < 2, scoreMask = sub.vt; end

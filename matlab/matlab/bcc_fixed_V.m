@@ -4,11 +4,12 @@ function V = bcc_fixed_V(sub)
 %
 %      V(t) = CS(t) * w_obj(block)
 %
-%  w_obj holds the delivered heat per cue per block (read from the first
-%  conditioning trial of each pure-cue category; delivery is constant
-%  within a block's conditioning phase), so V is the normatively correct
-%  cue-based expectation from trial one. fit_bcc blends it with US:
-%  R = kappa*V + (1-kappa)*US.
+%  w_obj extracts CS->US mapping from from the first conditioning trial of 
+%  that cue. V is therefore objectively correct cue-based expectation from 
+%  trial one as CS->US mapping is constant in conditioning.
+%
+%  predict_model.m blends it with US: R = kappa*V + (1-kappa)*US for bcc fit.
+
 
     V = zeros(sub.n, 1);
     for bi = 1:numel(sub.ub)
