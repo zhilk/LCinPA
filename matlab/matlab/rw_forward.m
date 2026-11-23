@@ -1,7 +1,7 @@
 function V = rw_forward(CS, US, eta, blocks)
 %RW_FORWARD  Rescorla-Wagner cue expectation with per-block naive reset.
 %
-%      V(t)   = w' * CS(t)
+%      V(t)    = w' * CS(t)
 %      w_{t+1} = w + eta * CS(t) * (US(t) - V(t))
 %
 %  Weights start naive at [0.5 0.5] and reset to naive at every block
