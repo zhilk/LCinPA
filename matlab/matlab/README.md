@@ -87,6 +87,12 @@ Scripts use plain loops (no parfor) so the seeded runs are exactly
 reproducible. Do not put `models/` and `matlab/` on the path together; the
 fitter names overlap.
 
+## variable names throughout the code 
+CR: the actual VAS rating the participant gave (raw data).
+R: the model's internal prediction, i.e. the perceived pain the model thinks the person experienced.
+CRpred = b0 + b1·R: the model's predicted rating, after the affine mapping.
+
+
 ## Robustness note
 
 All code and all reported results use the per-block reset. As a

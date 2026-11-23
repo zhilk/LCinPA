@@ -45,9 +45,9 @@ function [pred, params] = predict_model(sub, model, g)
 
         case 'rwbcc'
             nE = numel(g.eta30); nK = numel(g.kappa);
-            mus = zeros(sub.n, nE);
+            Vs = zeros(sub.n, nE);
             for i = 1:nE
-                mus(:, i) = rw_forward(sub.CS, sub.US, g.eta30(i), sub.blocks);
+                Vs(:, i) = rw_forward(sub.CS, sub.US, g.eta30(i), sub.blocks);
             end
             pred = zeros(sub.n, nE*nK);
             params = zeros(nE*nK, 2);
@@ -55,7 +55,7 @@ function [pred, params] = predict_model(sub, model, g)
             for i = 1:nE
                 for j = 1:nK
                     c = c + 1;
-                    pred(:, c) = g.kappa(j)*mus(:, i) + (1 - g.kappa(j))*sub.US;
+                    pred(:, c) = g.kappa(j)*Vs(:, i) + (1 - g.kappa(j))*sub.US;
                     params(c, :) = [g.eta30(i), g.kappa(j)];
                 end
             end

@@ -5,11 +5,15 @@ function results = fit_rw(subT, scoreMask)
 %      R(t)    = w' * CS(t)
 %      w_{t+1} = w + eta * CS(t) * (US(t) - R(t))
 %
-%  Weights start naive at [0.5 0.5] and reset at each block boundary (all
-%  models begin each block naive; contingencies are re-conditioned per
-%  block). eta fit by grid maximum likelihood (50 values, 0.01-1).
+%  Weights start naive at [0.5 0.5] and reset at each block boundary. 
+%  Eta fit by grid maximum likelihood (50 values, 0.01-1).
+%  Note here that R(t) = V(t) as the rating prediction is equivalent to the
+%  expectation for this model. 
+
 %  Learning on all trials; likelihood scored on valid test trials unless
-%  scoreMask overrides. nPar = 4 (eta, b0, b1, sigma).
+%  scoreMask overrides. 
+% 
+%  nPar = 4 (eta, b0, b1, sigma).
 
     sub = prep_subject(subT);
     if nargin < 2, scoreMask = sub.vt; end
