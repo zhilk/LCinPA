@@ -3,10 +3,11 @@ function results = fit_null(subT, scoreMask)
 %
 %      R(t) = US(t)
 %
-%  No expectation, no learning, no latent causes; the affine rating model
-%  (b0, b1, sigma) is the only fitted part, so this is the baseline any
-%  expectation term must beat. Likelihood scored on valid test trials
-%  unless scoreMask overrides. nPar = 3 (b0, b1, sigma).
+%  The affine rating model (b0, b1, sigma) is the only fitted part, 
+%  this is the baseline expectation term must beat. 
+%  Likelihood scored on valid test trials unless scoreMask overrides. 
+% 
+%  nPar = 3 (b0, b1, sigma).
 
     sub = prep_subject(subT);
     if nargin < 2, scoreMask = sub.vt; end
