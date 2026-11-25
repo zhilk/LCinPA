@@ -1,19 +1,26 @@
 function results = lcm_infer_simple(X, sus, scs, c0, a)
 %LCM_INFER_SIMPLE  Local MAP inference for the simple three-cause model,
-%  one block of trials.
+% within one condition.
 %
 %  Identical inference loop to lcm_infer_percept.m except for the prior:
 %  K = 3 fixed slots, prior proportional to visit counts Nk with every
 %  empty slot at a fixed weight c0 (no CRP, no alpha). Each trial:
 %    1. prior over slots from counts (empty slots at c0), normalized;
-%    2. Gaussian feature likelihood of x_t = [US, x_face, x_house] under
+%    2. Gaussian feature likelihood of x_t = [US, x_face] under  
 %       each slot, means (SumF + a*mu0)/(Nk + a), variances
-%       sigma^2 * (1 + 1/(Nk + a)) with sigma = [sus, scs, scs];
+%       sigma^2 * (1 + 1/(Nk + a)) with sigma = [sus, scs]; 
 %    3. full posterior; read-out R(t) = sum_k post(k) * mu_US(k);
 %    4. MAP assignment z(t), sufficient-stat update of that slot.
 %
-%  Defaults: scs = 0.2, c0 = 0.1, a = 0.1 (fixed in the paper; sweeps in
-%  results/). Returns R, post [T x 3], z, Nk, SumF.
+%  Defaults (fixed in the paper; sweeps in results/): 
+%   - sigma cs scs = 0.2, 
+%     standard deviation of the cue features within a cause.
+%   - c0 = 0.1, 
+%     prior weight for an empty slot.
+%   - a = 0.1, 
+%     pseudocount
+% 
+%  Returns R, post [T x 3], z, Nk, SumF.
 
     if nargin < 3, scs = 0.2; end
     if nargin < 4, c0  = 0.1; end
@@ -57,7 +64,7 @@ function results = lcm_infer_simple(X, sus, scs, c0, a)
             else
                 mu_us_k = mu0;
             end
-            R_t = R_t + post_full(k) * mu_us_k;
+            R_t = R_t + post_full(k) * mu_us_k; % soft approximation 
         end
         R(t) = R_t;
         post(t,:) = post_full;

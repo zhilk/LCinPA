@@ -3,7 +3,7 @@ function results = lcm_infer_percept(X, opts)
 %  Local MAP inference for the CRP latent-cause model, one block of trials.
 %  opts.sigma_cs / .sigma_us are standard deviations (squared internally).
 %
-%  Each trial t with features x_t = [US, x_face, x_house]:
+%  Each trial t with features x_t = [US, x_face]:
 %    1. prior over causes: occupied causes proportional to their visit
 %       counts Nk (plus opts.stickiness on the previous cause); opts.alpha
 %       on the first empty slot (capacity opts.K; the last slot is reused
