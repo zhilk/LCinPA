@@ -72,6 +72,61 @@ Analyses:
   trials) and the morph-trial LL winner (at the valid-test ML parameters,
   no refit); writes `results/recovery_model_confusion.csv`. Seed rng(11).
 
+## Call tree
+
+The three analysis scripts are the entry points; everything else is
+called from them.
+
+```
+fit_all_subjects                      -> results/matlab_fits.csv
+├── load_subjects
+│   └── prep_subject
+├── fit_null / fit_rw / fit_bcc / fit_rwbcc / fit_lcm_simple / fit_lcm_percept
+│   each fitter calls:
+│   ├── prep_subject                  (again, on sub.T)
+│   ├── model_grids
+│   ├── predict_model
+│   └── fit_on_grid
+│   fit_bcc also         -> bcc_fixed_V        (stores results.V)
+│   fit_lcm_simple also  -> lcm_infer_simple   (latent structure z at ML params)
+│   fit_lcm_percept also -> lcm_infer_percept  (latent structure z at ML params)
+└── eff_pred
+
+parameter_recovery                    -> results/recovery_param_*.csv
+├── load_subjects -> prep_subject
+├── model_grids
+├── predict_model
+├── fit_on_grid
+├── eff_pred
+└── phenotype_simple
+    └── lcm_infer_simple
+
+model_recovery                        -> results/recovery_model_confusion.csv
+├── load_subjects -> prep_subject
+├── model_grids
+├── predict_model
+└── fit_on_grid
+
+predict_model (one case per model)
+├── 'null'    -> R = US, no call
+├── 'rw'      -> rw_forward          (R = V)
+├── 'bcc'     -> bcc_fixed_V         (R = kappa*V + (1-kappa)*US)
+├── 'rwbcc'   -> rw_forward          (R = kappa*V + (1-kappa)*US)
+├── 'simple'  -> lcm_infer_simple    (once per grid point x block)
+└── 'percept' -> lcm_infer_percept   (once per grid point x block)
+
+rescaled_LL   - not called; reference implementation for checking fit_on_grid
+```
+
+Notes:
+- The recovery scripts call `predict_model` and `fit_on_grid` directly,
+  not the `fit_*` wrappers, so changes made only in a wrapper do not
+  reach the recovery analyses.
+- New models are added as a case in `predict_model`, an entry in
+  `model_grids`, a `fit_*` wrapper, and a line in each analysis script.
+- `sub.X` (built in `prep_subject`) is read only by the latent-cause code:
+  `predict_model`, the two LCM fitters and `phenotype_simple`.
+
 ## Running
 
 With this folder on the path (data paths resolve from the folder's own
